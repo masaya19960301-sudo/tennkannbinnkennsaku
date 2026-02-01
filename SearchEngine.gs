@@ -196,45 +196,47 @@ class RouteSearchEngine {
         }
 
         // 中継地点の場合
-        const visitKey = `${rule.toLocation}_${formatDate(arrivalDate)}`;
-        const existingHops = visited.get(visitKey);
+        const newPath = [...current.path, {
+          location: rule.toLocation,
+          locationName: this.locations.get(rule.toLocation).name,
+          date: formatDate(arrivalDate),
+          action: rule.sameDayTransfer ? '到着・積替' : '到着'
+        }];
 
-        // 未訪問、または同じ日付でより少ない経由数で到達できる場合
-        if (existingHops === undefined || newHops < existingHops) {
-          visited.set(visitKey, newHops);
+        // 同日積替可の場合は同じ日から次の便を探索
+        // 同日積替不可の場合は翌日から探索
+        const nextSearchDate = rule.sameDayTransfer ? arrivalDate : addDays(arrivalDate, 1);
 
-          const newPath = [...current.path, {
-            location: rule.toLocation,
-            locationName: this.locations.get(rule.toLocation).name,
-            date: formatDate(arrivalDate),
-            action: rule.sameDayTransfer ? '到着・積替' : '到着'
-          }];
+        // この中継地点から出発可能な全ルールについて、次の出発日を計算
+        const outboundRules = this.rulesByOrigin.get(rule.toLocation) || [];
+        const addedDates = new Set();  // 同じ日付の重複追加を防止
 
-          // 同日積替可の場合は同じ日から次の便を探索
-          // 同日積替不可の場合は翌日から探索
-          const nextSearchDate = rule.sameDayTransfer ? arrivalDate : addDays(arrivalDate, 1);
+        for (const outRule of outboundRules) {
+          // このルールの積み込み曜日に合わせた次の出発日を計算
+          const nextDepartureDate = this.getNextWeekdayDate(nextSearchDate, outRule.loadWeekday);
 
-          // 次の稼働日を探す（探索期間内の全稼働日を追加）
-          for (let d = 0; d < CONFIG.MAX_SEARCH_DAYS; d++) {
-            const nextDate = addDays(nextSearchDate, d);
-            if (nextDate > maxDate) break;
+          if (nextDepartureDate > maxDate) continue;
 
-            if (this.calendarChecker.isOperatingDay(rule.toLocation, nextDate)) {
-              const nextKey = `${rule.toLocation}_${formatDate(nextDate)}`;
-              const nextExistingHops = visited.get(nextKey);
+          const dateStr = formatDate(nextDepartureDate);
+          if (addedDates.has(dateStr)) continue;  // 同じ日付は1回だけ追加
 
-              if (nextExistingHops === undefined || newHops < nextExistingHops) {
-                queue.push({
-                  location: rule.toLocation,
-                  date: nextDate,
-                  path: newPath,
-                  hops: newHops
-                });
+          // その日が稼働日かどうか確認
+          if (!this.calendarChecker.isOperatingDay(rule.toLocation, nextDepartureDate)) {
+            continue;
+          }
 
-                // 最初の稼働日だけ追加（それ以降は別の経路から探索される）
-                break;
-              }
-            }
+          const nextKey = `${rule.toLocation}_${dateStr}`;
+          const nextExistingHops = visited.get(nextKey);
+
+          if (nextExistingHops === undefined || newHops < nextExistingHops) {
+            visited.set(nextKey, newHops);
+            queue.push({
+              location: rule.toLocation,
+              date: nextDepartureDate,
+              path: newPath,
+              hops: newHops
+            });
+            addedDates.add(dateStr);
           }
         }
       }
@@ -301,6 +303,21 @@ class RouteSearchEngine {
     }
 
     return addDays(loadDate, daysToArrival);
+  }
+
+  /**
+   * 指定日以降の、指定曜日の最初の日付を取得
+   * @param {Date} baseDate - 基準日
+   * @param {number} targetWeekday - 目標曜日（0:日〜6:土）
+   * @returns {Date} 次の指定曜日の日付
+   */
+  getNextWeekdayDate(baseDate, targetWeekday) {
+    const current = new Date(baseDate);
+    const currentWeekday = current.getDay();
+
+    let daysToAdd = (targetWeekday - currentWeekday + 7) % 7;
+    // 同じ曜日の場合は当日を返す
+    return addDays(current, daysToAdd);
   }
 
   /**
