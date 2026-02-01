@@ -91,25 +91,37 @@ class RouteSearchEngine {
     // 訪問済み管理: "拠点ID_日付" -> 最小経由数
     const visited = new Map();
 
-    // 初期状態：検索基準日から探索開始
-    // 出発拠点の各稼働日を初期キューに追加
-    for (let d = 0; d < CONFIG.MAX_SEARCH_DAYS; d++) {
-      const checkDate = addDays(baseDate, d);
-      if (this.calendarChecker.isOperatingDay(fromLocationId, checkDate)) {
-        const dateStr = formatDate(checkDate);
-        queue.push({
-          location: fromLocationId,
-          date: checkDate,
-          path: [{
-            location: fromLocationId,
-            locationName: this.locations.get(fromLocationId).name,
-            date: dateStr,
-            action: '出発'
-          }],
-          hops: 0
-        });
-        visited.set(`${fromLocationId}_${dateStr}`, 0);
+    // 初期状態：出発拠点から出発可能な全ルールの出発曜日に基づいてキューに追加
+    const startRules = this.rulesByOrigin.get(fromLocationId) || [];
+    const addedStartDates = new Set();
+
+    for (const rule of startRules) {
+      // このルールの積み込み曜日に合わせた次の出発日を計算
+      const departureDate = this.getNextWeekdayDate(baseDate, rule.loadWeekday);
+
+      if (departureDate > maxDate) continue;
+
+      const dateStr = formatDate(departureDate);
+      if (addedStartDates.has(dateStr)) continue;
+
+      // 拠点カレンダーで休業日になっていないかチェック（例外のみ）
+      if (this.isClosedByCalendar(fromLocationId, departureDate)) {
+        continue;
       }
+
+      queue.push({
+        location: fromLocationId,
+        date: departureDate,
+        path: [{
+          location: fromLocationId,
+          locationName: this.locations.get(fromLocationId).name,
+          date: dateStr,
+          action: '出発'
+        }],
+        hops: 0
+      });
+      visited.set(`${fromLocationId}_${dateStr}`, 0);
+      addedStartDates.add(dateStr);
     }
 
     // キューを日付順にソート
@@ -141,16 +153,16 @@ class RouteSearchEngine {
           continue;
         }
 
-        // 積み込み曜日が一致 - この拠点が稼働しているか確認
-        if (!this.calendarChecker.isOperatingDay(current.location, current.date)) {
+        // 積み込み曜日が一致 - 拠点カレンダーで休業日になっていないかチェック
+        if (this.isClosedByCalendar(current.location, current.date)) {
           continue;
         }
 
         // 到着日を計算
         const arrivalDate = this.calculateArrivalDate(current.date, rule.loadWeekday, rule.arrivalWeekday);
 
-        // 到着拠点が稼働しているか確認
-        if (!this.calendarChecker.isOperatingDay(rule.toLocation, arrivalDate)) {
+        // 到着拠点が拠点カレンダーで休業日になっていないかチェック
+        if (this.isClosedByCalendar(rule.toLocation, arrivalDate)) {
           continue;
         }
 
@@ -220,8 +232,8 @@ class RouteSearchEngine {
           const dateStr = formatDate(nextDepartureDate);
           if (addedDates.has(dateStr)) continue;  // 同じ日付は1回だけ追加
 
-          // その日が稼働日かどうか確認
-          if (!this.calendarChecker.isOperatingDay(rule.toLocation, nextDepartureDate)) {
+          // その日が拠点カレンダーで休業日になっていないかチェック
+          if (this.isClosedByCalendar(rule.toLocation, nextDepartureDate)) {
             continue;
           }
 
@@ -318,6 +330,47 @@ class RouteSearchEngine {
     let daysToAdd = (targetWeekday - currentWeekday + 7) % 7;
     // 同じ曜日の場合は当日を返す
     return addDays(current, daysToAdd);
+  }
+
+  /**
+   * 拠点カレンダー（日付例外）と連休設定のみで休業日かどうかを判定
+   * 便がある日は基本的に出発可能とみなすため、通常の曜日ルールは無視
+   * @param {string} locationId - 拠点ID
+   * @param {Date} date - 判定日
+   * @returns {boolean} 休業日ならtrue
+   */
+  isClosedByCalendar(locationId, date) {
+    const dateStr = formatDate(date);
+    const locationCalendar = this.data.locationCalendar;
+    const holidays = this.data.holidays;
+
+    // 拠点カレンダー（日付例外）をチェック - 最優先
+    const calendarKey = `${locationId}_${dateStr}`;
+    if (locationCalendar.has(calendarKey)) {
+      const entry = locationCalendar.get(calendarKey);
+      // 振替稼働または臨時稼働なら稼働日
+      if (entry.status === CONFIG.CALENDAR_STATUS.SUBSTITUTE ||
+          entry.status === CONFIG.CALENDAR_STATUS.TEMPORARY) {
+        return false;  // 休業日ではない
+      }
+      // 休業なら休業日
+      if (entry.status === CONFIG.CALENDAR_STATUS.CLOSED) {
+        return true;  // 休業日
+      }
+    }
+
+    // 連休設定をチェック
+    // 拠点固有の連休
+    if (holidays.has(locationId) && holidays.get(locationId).has(dateStr)) {
+      return true;  // 休業日
+    }
+    // 全拠点共通の連休
+    if (holidays.has('ALL') && holidays.get('ALL').has(dateStr)) {
+      return true;  // 休業日
+    }
+
+    // 便がある日は稼働日とみなす（通常の曜日ルールは無視）
+    return false;
   }
 
   /**
