@@ -3,9 +3,9 @@
  * 経路探索エンジン
  *
  * 検索仕様:
- * - 検索基準日から日付を1日ずつ進めながら探索
+ * - 到着日が最も早い経路を優先
+ * - 同じ到着日なら経由数が最も少ない経路を優先
  * - 同日積替可の場合は到着当日に次工程へ進める
- * - 最初に到達した到着拠点を最短到達とみなす
  */
 
 /**
@@ -44,6 +44,7 @@ class RouteSearchEngine {
 
   /**
    * 最短経路を検索
+   * 優先順位: 1.到着日が早い 2.経由数が少ない
    * @param {string} fromLocationId - 出発拠点ID
    * @param {string} toLocationId - 到着拠点ID
    * @param {Date} searchDate - 検索基準日
@@ -77,37 +78,53 @@ class RouteSearchEngine {
       };
     }
 
-    // BFS（幅優先探索）で最短経路を探索
     const baseDate = parseDate(searchDate);
     const maxDate = addDays(baseDate, CONFIG.MAX_SEARCH_DAYS);
 
-    // 状態: {location: 拠点ID, date: 日付, path: 経路履歴}
-    const queue = [];
-    const visited = new Set();  // "拠点ID_日付" 形式で訪問済みを管理
+    // 最良の結果を保持（到着日が早い、同着なら経由数が少ない）
+    let bestResult = null;
 
-    // 初期状態：出発拠点の次の稼働日から開始
-    const startDate = this.calendarChecker.findNextOperatingDay(fromLocationId, baseDate);
-    if (!startDate) {
-      return {
-        success: false,
-        error: `出発拠点「${this.locations.get(fromLocationId).name}」の稼働日が見つかりません（${CONFIG.MAX_SEARCH_DAYS}日以内）`
-      };
+    // 状態: {location, date, path, hops}
+    // 優先度付きキューの代わりに配列を使用し、到着日順にソートして処理
+    const queue = [];
+
+    // 訪問済み管理: "拠点ID_日付" -> 最小経由数
+    const visited = new Map();
+
+    // 初期状態：検索基準日から探索開始
+    // 出発拠点の各稼働日を初期キューに追加
+    for (let d = 0; d < CONFIG.MAX_SEARCH_DAYS; d++) {
+      const checkDate = addDays(baseDate, d);
+      if (this.calendarChecker.isOperatingDay(fromLocationId, checkDate)) {
+        const dateStr = formatDate(checkDate);
+        queue.push({
+          location: fromLocationId,
+          date: checkDate,
+          path: [{
+            location: fromLocationId,
+            locationName: this.locations.get(fromLocationId).name,
+            date: dateStr,
+            action: '出発'
+          }],
+          hops: 0
+        });
+        visited.set(`${fromLocationId}_${dateStr}`, 0);
+      }
     }
 
-    queue.push({
-      location: fromLocationId,
-      date: startDate,
-      path: [{
-        location: fromLocationId,
-        locationName: this.locations.get(fromLocationId).name,
-        date: formatDate(startDate),
-        action: '出発'
-      }]
-    });
-    visited.add(`${fromLocationId}_${formatDate(startDate)}`);
+    // キューを日付順にソート
+    queue.sort((a, b) => a.date - b.date);
 
     while (queue.length > 0) {
       const current = queue.shift();
+
+      // 枝刈り: 既に見つかった最良解より遅い場合はスキップ
+      if (bestResult) {
+        const bestArrival = parseDate(bestResult.arrivalDate);
+        if (current.date > bestArrival) {
+          continue;
+        }
+      }
 
       // 探索日数上限チェック
       if (current.date > maxDate) {
@@ -116,92 +133,122 @@ class RouteSearchEngine {
 
       // この拠点から出発可能なルールを取得
       const availableRules = this.rulesByOrigin.get(current.location) || [];
+      const currentWeekday = current.date.getDay();
 
       for (const rule of availableRules) {
         // この日付がルールの積み込み曜日と一致するか確認
-        const currentWeekday = current.date.getDay();
+        if (currentWeekday !== rule.loadWeekday) {
+          continue;
+        }
 
-        if (currentWeekday === rule.loadWeekday) {
-          // 積み込み曜日が一致 - この拠点が稼働しているか確認
-          if (!this.calendarChecker.isOperatingDay(current.location, current.date)) {
-            continue;  // 非稼働日はスキップ
+        // 積み込み曜日が一致 - この拠点が稼働しているか確認
+        if (!this.calendarChecker.isOperatingDay(current.location, current.date)) {
+          continue;
+        }
+
+        // 到着日を計算
+        const arrivalDate = this.calculateArrivalDate(current.date, rule.loadWeekday, rule.arrivalWeekday);
+
+        // 到着拠点が稼働しているか確認
+        if (!this.calendarChecker.isOperatingDay(rule.toLocation, arrivalDate)) {
+          continue;
+        }
+
+        // 枝刈り: 既に見つかった最良解より遅い場合はスキップ
+        if (bestResult) {
+          const bestArrival = parseDate(bestResult.arrivalDate);
+          if (arrivalDate > bestArrival) {
+            continue;
           }
-
-          // 到着日を計算
-          const arrivalDate = this.calculateArrivalDate(current.date, rule.loadWeekday, rule.arrivalWeekday);
-
-          // 到着拠点が稼働しているか確認
-          if (!this.calendarChecker.isOperatingDay(rule.toLocation, arrivalDate)) {
-            continue;  // 到着拠点が非稼働日はスキップ
+          // 同じ到着日で経由数が多い場合もスキップ
+          if (arrivalDate.getTime() === bestArrival.getTime() &&
+              current.hops + 1 >= bestResult.route.length - 1) {
+            continue;
           }
+        }
 
-          // 目的地に到着した場合
-          if (rule.toLocation === toLocationId) {
-            const finalPath = [...current.path, {
-              location: rule.toLocation,
-              locationName: this.locations.get(rule.toLocation).name,
-              date: formatDate(arrivalDate),
-              action: '到着'
-            }];
+        const newHops = current.hops + 1;
 
-            return {
-              success: true,
-              arrivalDate: formatDate(arrivalDate),
-              route: finalPath,
-              routeLocations: finalPath.map(p => p.locationName),
-              routeDates: finalPath.map(p => p.date),
-              daysRequired: Math.ceil((arrivalDate - baseDate) / (1000 * 60 * 60 * 24)),
-              message: `最短${formatDate(arrivalDate)}に到着可能です`
-            };
+        // 目的地に到着した場合
+        if (rule.toLocation === toLocationId) {
+          const finalPath = [...current.path, {
+            location: rule.toLocation,
+            locationName: this.locations.get(rule.toLocation).name,
+            date: formatDate(arrivalDate),
+            action: '到着'
+          }];
+
+          const newResult = {
+            success: true,
+            arrivalDate: formatDate(arrivalDate),
+            route: finalPath,
+            routeLocations: finalPath.map(p => p.locationName),
+            routeDates: finalPath.map(p => p.date),
+            daysRequired: Math.ceil((arrivalDate - baseDate) / (1000 * 60 * 60 * 24)),
+            message: `最短${formatDate(arrivalDate)}に到着可能です`
+          };
+
+          // 最良解の更新判定
+          if (!bestResult || this.isBetterResult(newResult, bestResult)) {
+            bestResult = newResult;
           }
+          continue;
+        }
 
-          // 中継地点の場合 - キューに追加
-          const visitKey = `${rule.toLocation}_${formatDate(arrivalDate)}`;
-          if (!visited.has(visitKey)) {
-            visited.add(visitKey);
+        // 中継地点の場合
+        const visitKey = `${rule.toLocation}_${formatDate(arrivalDate)}`;
+        const existingHops = visited.get(visitKey);
 
-            const newPath = [...current.path, {
-              location: rule.toLocation,
-              locationName: this.locations.get(rule.toLocation).name,
-              date: formatDate(arrivalDate),
-              action: rule.sameDayTransfer ? '到着・積替' : '到着'
-            }];
+        // 未訪問、または同じ日付でより少ない経由数で到達できる場合
+        if (existingHops === undefined || newHops < existingHops) {
+          visited.set(visitKey, newHops);
 
-            // 同日積替可の場合は同じ日から次の便を探索
-            // 同日積替不可の場合は翌日から探索
-            const nextSearchDate = rule.sameDayTransfer ? arrivalDate : addDays(arrivalDate, 1);
-            const nextOperatingDate = this.calendarChecker.findNextOperatingDay(rule.toLocation, nextSearchDate);
+          const newPath = [...current.path, {
+            location: rule.toLocation,
+            locationName: this.locations.get(rule.toLocation).name,
+            date: formatDate(arrivalDate),
+            action: rule.sameDayTransfer ? '到着・積替' : '到着'
+          }];
 
-            if (nextOperatingDate && nextOperatingDate <= maxDate) {
-              queue.push({
-                location: rule.toLocation,
-                date: nextOperatingDate,
-                path: newPath
-              });
+          // 同日積替可の場合は同じ日から次の便を探索
+          // 同日積替不可の場合は翌日から探索
+          const nextSearchDate = rule.sameDayTransfer ? arrivalDate : addDays(arrivalDate, 1);
+
+          // 次の稼働日を探す（探索期間内の全稼働日を追加）
+          for (let d = 0; d < CONFIG.MAX_SEARCH_DAYS; d++) {
+            const nextDate = addDays(nextSearchDate, d);
+            if (nextDate > maxDate) break;
+
+            if (this.calendarChecker.isOperatingDay(rule.toLocation, nextDate)) {
+              const nextKey = `${rule.toLocation}_${formatDate(nextDate)}`;
+              const nextExistingHops = visited.get(nextKey);
+
+              if (nextExistingHops === undefined || newHops < nextExistingHops) {
+                queue.push({
+                  location: rule.toLocation,
+                  date: nextDate,
+                  path: newPath,
+                  hops: newHops
+                });
+
+                // 最初の稼働日だけ追加（それ以降は別の経路から探索される）
+                break;
+              }
             }
           }
         }
       }
 
-      // 翌日も同じ拠点から探索を続ける（別の曜日のルールを試すため）
-      const nextDay = addDays(current.date, 1);
-      const nextVisitKey = `${current.location}_${formatDate(nextDay)}`;
+      // キューを再ソート（日付順、同日なら経由数順）
+      queue.sort((a, b) => {
+        const dateDiff = a.date - b.date;
+        if (dateDiff !== 0) return dateDiff;
+        return a.hops - b.hops;
+      });
+    }
 
-      if (!visited.has(nextVisitKey) && nextDay <= maxDate) {
-        const nextOperatingDate = this.calendarChecker.findNextOperatingDay(current.location, nextDay);
-
-        if (nextOperatingDate && nextOperatingDate <= maxDate) {
-          const nextKey = `${current.location}_${formatDate(nextOperatingDate)}`;
-          if (!visited.has(nextKey)) {
-            visited.add(nextKey);
-            queue.push({
-              location: current.location,
-              date: nextOperatingDate,
-              path: current.path
-            });
-          }
-        }
-      }
+    if (bestResult) {
+      return bestResult;
     }
 
     // 到達不可
@@ -209,6 +256,29 @@ class RouteSearchEngine {
       success: false,
       error: `${this.locations.get(fromLocationId).name} から ${this.locations.get(toLocationId).name} への経路が見つかりません（${CONFIG.MAX_SEARCH_DAYS}日以内）`
     };
+  }
+
+  /**
+   * 新しい結果が既存の最良解より良いかどうかを判定
+   * @param {Object} newResult - 新しい結果
+   * @param {Object} bestResult - 現在の最良解
+   * @returns {boolean} 新しい結果の方が良い場合true
+   */
+  isBetterResult(newResult, bestResult) {
+    const newArrival = parseDate(newResult.arrivalDate);
+    const bestArrival = parseDate(bestResult.arrivalDate);
+
+    // 到着日が早い方が良い
+    if (newArrival < bestArrival) {
+      return true;
+    }
+
+    // 同じ到着日なら経由数が少ない方が良い
+    if (newArrival.getTime() === bestArrival.getTime()) {
+      return newResult.route.length < bestResult.route.length;
+    }
+
+    return false;
   }
 
   /**
