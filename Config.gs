@@ -32,7 +32,14 @@ const CONFIG = {
     LOAD_WEEKDAY: 1,       // 積み込み曜日
     TO_LOCATION: 2,        // 到着拠点
     ARRIVAL_WEEKDAY: 3,    // 到着曜日
-    SAME_DAY_TRANSFER: 4   // 同日積替可否
+    SAME_DAY_TRANSFER: 4,  // 同日積替可否
+    TRANSFER_TYPE: 5       // 種別（店間便/店引）
+  },
+
+  // 移動種別
+  TRANSFER_TYPE: {
+    STORE_PICKUP: '店引',    // 店引（優先）
+    INTER_STORE: '店間便'    // 店間便
   },
 
   // 拠点別積み込み曜日のカラム

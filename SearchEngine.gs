@@ -118,7 +118,8 @@ class RouteSearchEngine {
           date: dateStr,
           action: '出発'
         }],
-        hops: 0
+        hops: 0,
+        storePickupCount: 0  // 店引の使用回数（初期値）
       });
       visited.set(`${fromLocationId}_${dateStr}`, 0);
       addedStartDates.add(dateStr);
@@ -181,13 +182,18 @@ class RouteSearchEngine {
 
         const newHops = current.hops + 1;
 
+        // 店引カウントを更新
+        const newStorePickupCount = (current.storePickupCount || 0) + (rule.isStorePickup ? 1 : 0);
+
         // 目的地に到着した場合
         if (rule.toLocation === toLocationId) {
           const finalPath = [...current.path, {
             location: rule.toLocation,
             locationName: this.locations.get(rule.toLocation).name,
             date: formatDate(arrivalDate),
-            action: '到着'
+            action: '到着',
+            transferType: rule.transferType,
+            isStorePickup: rule.isStorePickup
           }];
 
           const newResult = {
@@ -197,6 +203,7 @@ class RouteSearchEngine {
             routeLocations: finalPath.map(p => p.locationName),
             routeDates: finalPath.map(p => p.date),
             daysRequired: Math.ceil((arrivalDate - baseDate) / (1000 * 60 * 60 * 24)),
+            storePickupCount: newStorePickupCount,  // 店引の使用回数
             message: `最短${formatDate(arrivalDate)}に到着可能です`
           };
 
@@ -212,7 +219,9 @@ class RouteSearchEngine {
           location: rule.toLocation,
           locationName: this.locations.get(rule.toLocation).name,
           date: formatDate(arrivalDate),
-          action: rule.sameDayTransfer ? '到着・積替' : '到着'
+          action: rule.sameDayTransfer ? '到着・積替' : '到着',
+          transferType: rule.transferType,
+          isStorePickup: rule.isStorePickup
         }];
 
         // 同日積替可の場合は同じ日から次の便を探索
@@ -246,7 +255,8 @@ class RouteSearchEngine {
               location: rule.toLocation,
               date: nextDepartureDate,
               path: newPath,
-              hops: newHops
+              hops: newHops,
+              storePickupCount: newStorePickupCount  // 店引の使用回数を保持
             });
             addedDates.add(dateStr);
           }
@@ -274,6 +284,7 @@ class RouteSearchEngine {
 
   /**
    * 新しい結果が既存の最良解より良いかどうかを判定
+   * 優先順位: 1.到着日が早い 2.店引の使用回数が多い 3.経由数が少ない
    * @param {Object} newResult - 新しい結果
    * @param {Object} bestResult - 現在の最良解
    * @returns {boolean} 新しい結果の方が良い場合true
@@ -286,13 +297,22 @@ class RouteSearchEngine {
     if (newArrival < bestArrival) {
       return true;
     }
-
-    // 同じ到着日なら経由数が少ない方が良い
-    if (newArrival.getTime() === bestArrival.getTime()) {
-      return newResult.route.length < bestResult.route.length;
+    if (newArrival > bestArrival) {
+      return false;
     }
 
-    return false;
+    // 同じ到着日なら店引の使用回数が多い方が良い
+    const newPickup = newResult.storePickupCount || 0;
+    const bestPickup = bestResult.storePickupCount || 0;
+    if (newPickup > bestPickup) {
+      return true;
+    }
+    if (newPickup < bestPickup) {
+      return false;
+    }
+
+    // 店引の数も同じなら経由数が少ない方が良い
+    return newResult.route.length < bestResult.route.length;
   }
 
   /**

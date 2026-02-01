@@ -89,12 +89,19 @@ function loadTransferRules() {
     const sameDayValue = row[CONFIG.TRANSFER_RULE_COLS.SAME_DAY_TRANSFER];
     const sameDayTransfer = isTrueValue(sameDayValue);
 
+    // 種別（店間便/店引）- 「店引」の場合は優先度が高い
+    const transferTypeValue = row[CONFIG.TRANSFER_RULE_COLS.TRANSFER_TYPE];
+    const transferType = String(transferTypeValue || '').trim();
+    const isStorePickup = transferType === CONFIG.TRANSFER_TYPE.STORE_PICKUP;
+
     rules.push({
       fromLocation: fromLocation,
       loadWeekday: loadWeekday,
       toLocation: toLocation,
       arrivalWeekday: arrivalWeekday,
-      sameDayTransfer: sameDayTransfer
+      sameDayTransfer: sameDayTransfer,
+      transferType: transferType || CONFIG.TRANSFER_TYPE.INTER_STORE,  // デフォルトは店間便
+      isStorePickup: isStorePickup  // 店引かどうかのフラグ
     });
   }
 
