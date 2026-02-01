@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+      font-size: 24px;
+    }
+
+    .search-form {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .form-group select,
+    .form-group input[type="date"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      background-color: white;
+    }
+
+    .form-group select:focus,
+    .form-group input[type="date"]:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    }
+
+    .search-btn {
+      width: 100%;
+      padding: 14px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .search-btn:hover {
+      background-color: #2980b9;
+    }
+
+    .search-btn:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    .result-area {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .result-area.show {
+      display: block;
+    }
+
+    .result-success {
+      border-left: 4px solid #27ae60;
+    }
+
+    .result-error {
+      border-left: 4px solid #e74c3c;
+    }
+
+    .result-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .result-success .result-title {
+      color: #27ae60;
+    }
+
+    .result-error .result-title {
+      color: #e74c3c;
+    }
+
+    .arrival-date {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #ecf0f1;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .days-required {
+      font-size: 14px;
+      color: #7f8c8d;
+      margin-top: 5px;
+    }
+
+    .route-section {
+      margin-top: 20px;
+    }
+
+    .route-section h3 {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+
+    .route-list {
+      list-style: none;
+    }
+
+    .route-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px dashed #eee;
+    }
+
+    .route-item:last-child {
+      border-bottom: none;
+    }
+
+    .route-step {
+      width: 30px;
+      height: 30px;
+      background-color: #3498db;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .route-step.start {
+      background-color: #27ae60;
+    }
+
+    .route-step.end {
+      background-color: #e74c3c;
+    }
+
+    .route-info {
+      flex-grow: 1;
+    }
+
+    .route-location {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .route-date {
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+
+    .route-action {
+      font-size: 12px;
+      color: #3498db;
+      background-color: #ebf5fb;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-left: 10px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #7f8c8d;
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ddd;
+      border-top-color: #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #e74c3c;
+      font-size: 16px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .search-form,
+      .result-area {
+        padding: 15px;
+      }
+
+      .arrival-date {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>店間便 到着日検索</h1>
+
+    <div class="search-form">
+      <div class="form-group">
+        <label for="fromLocation">出発拠点</label>
+        <select id="fromLocation">
+          <option value="">読み込み中...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="toLocation">到着拠点</label>
+        <select id="toLocation">
+          <option value="">読み込み中...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="searchDate">検索基準日</label>
+        <input type="date" id="searchDate">
+      </div>
+
+      <button type="button" class="search-btn" id="searchBtn" onclick="performSearch()">
+        検索
+      </button>
+    </div>
+
+    <div class="result-area" id="resultArea">
+      <!-- 検索結果がここに表示される -->
+    </div>
+  </div>
+
+  <script>
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadLocations();
+      setDefaultDate();
+    });
+
+    // デフォルトの日付を設定（今日）
+    function setDefaultDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('searchDate').value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    // 拠点一覧を読み込み
+    function loadLocations() {
+      google.script.run
+        .withSuccessHandler(function(locations) {
+          populateLocationSelect('fromLocation', locations);
+          populateLocationSelect('toLocation', locations);
+        })
+        .withFailureHandler(function(error) {
+          console.error('拠点読み込みエラー:', error);
+          alert('拠点一覧の読み込みに失敗しました');
+        })
+        .getLocations();
+    }
+
+    // セレクトボックスに拠点を設定
+    function populateLocationSelect(selectId, locations) {
+      const select = document.getElementById(selectId);
+      select.innerHTML = '<option value="">選択してください</option>';
+
+      locations.forEach(function(loc) {
+        const option = document.createElement('option');
+        option.value = loc.id;
+        option.textContent = loc.displayName;
+        select.appendChild(option);
+      });
+    }
+
+    // 検索実行
+    function performSearch() {
+      const fromLocation = document.getElementById('fromLocation').value;
+      const toLocation = document.getElementById('toLocation').value;
+      const searchDate = document.getElementById('searchDate').value;
+
+      // バリデーション
+      if (!fromLocation) {
+        alert('出発拠点を選択してください');
+        return;
+      }
+      if (!toLocation) {
+        alert('到着拠点を選択してください');
+        return;
+      }
+      if (!searchDate) {
+        alert('検索基準日を入力してください');
+        return;
+      }
+
+      // 検索中表示
+      const resultArea = document.getElementById('resultArea');
+      resultArea.className = 'result-area show';
+      resultArea.innerHTML = '<div class="loading">検索中</div>';
+
+      const searchBtn = document.getElementById('searchBtn');
+      searchBtn.disabled = true;
+
+      // 検索実行
+      google.script.run
+        .withSuccessHandler(function(result) {
+          displayResult(result);
+          searchBtn.disabled = false;
+        })
+        .withFailureHandler(function(error) {
+          displayError('検索中にエラーが発生しました: ' + error);
+          searchBtn.disabled = false;
+        })
+        .executeSearch(fromLocation, toLocation, searchDate);
+    }
+
+    // 検索結果を表示
+    function displayResult(result) {
+      const resultArea = document.getElementById('resultArea');
+
+      if (result.success) {
+        let html = '<div class="result-success">';
+        html += '<div class="result-title">経路が見つかりました</div>';
+        html += '<div class="arrival-date">';
+        html += formatDateJapanese(result.arrivalDate);
+        if (result.daysRequired !== undefined) {
+          html += '<div class="days-required">' + result.daysRequired + '日後</div>';
+        }
+        html += '</div>';
+
+        // 経路表示
+        if (result.route && result.route.length > 0) {
+          html += '<div class="route-section">';
+          html += '<h3>経由拠点・日付</h3>';
+          html += '<ul class="route-list">';
+
+          result.route.forEach(function(step, index) {
+            const stepClass = index === 0 ? 'start' : (index === result.route.length - 1 ? 'end' : '');
+            html += '<li class="route-item">';
+            html += '<div class="route-step ' + stepClass + '">' + (index + 1) + '</div>';
+            html += '<div class="route-info">';
+            html += '<span class="route-location">' + escapeHtml(step.locationName) + '</span>';
+            html += '<span class="route-action">' + escapeHtml(step.action) + '</span>';
+            html += '<div class="route-date">' + formatDateJapanese(step.date) + '</div>';
+            html += '</div>';
+            html += '</li>';
+          });
+
+          html += '</ul>';
+          html += '</div>';
+        }
+
+        html += '</div>';
+        resultArea.innerHTML = html;
+        resultArea.className = 'result-area show result-success';
+      } else {
+        displayError(result.error);
+      }
+    }
+
+    // エラー表示
+    function displayError(message) {
+      const resultArea = document.getElementById('resultArea');
+      let html = '<div class="result-error">';
+      html += '<div class="result-title">到達不可</div>';
+      html += '<p class="error-message">' + escapeHtml(message) + '</p>';
+      html += '</div>';
+      resultArea.innerHTML = html;
+      resultArea.className = 'result-area show result-error';
+    }
+
+    // 日付を日本語形式に変換
+    function formatDateJapanese(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekday = weekdays[date.getDay()];
+      return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日（' + weekday + '）';
+    }
+
+    // HTMLエスケープ
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
