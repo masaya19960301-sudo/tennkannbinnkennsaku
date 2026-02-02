@@ -3,452 +3,575 @@
 <head>
   <base target="_top">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
-      line-height: 1.6;
-      padding: 20px;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+      background-color: #f5f5f5; color: #333; line-height: 1.6; padding: 20px;
     }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
 
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
+    /* タブ */
+    .tabs { display: flex; border-bottom: 2px solid #3498db; margin-bottom: 20px; }
+    .tab { padding: 12px 24px; cursor: pointer; background: #ecf0f1; border: none; font-size: 16px; }
+    .tab.active { background: #3498db; color: white; }
+    .tab:hover:not(.active) { background: #d5dbdb; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* カード */
+    .card {
+      background: white; padding: 20px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
     }
+    .card h2 { font-size: 18px; color: #2c3e50; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
 
-    h1 {
-      text-align: center;
-      color: #2c3e50;
-      margin-bottom: 30px;
-      font-size: 24px;
+    /* フォーム */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+    .form-group select, .form-group input {
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
     }
+    .form-row { display: flex; gap: 15px; }
+    .form-row .form-group { flex: 1; }
 
-    .search-form {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-      color: #555;
-    }
-
-    .form-group select,
-    .form-group input[type="date"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 16px;
-      background-color: white;
-    }
-
-    .form-group select:focus,
-    .form-group input[type="date"]:focus {
-      outline: none;
-      border-color: #3498db;
-      box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
-    }
-
-    .search-btn {
-      width: 100%;
-      padding: 14px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 18px;
-      cursor: pointer;
+    /* ボタン */
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
       transition: background-color 0.3s;
     }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-success:hover { background: #1e8449; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-secondary { background: #95a5a6; color: white; }
+    .btn-secondary:hover { background: #7f8c8d; }
+    .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
 
-    .search-btn:hover {
-      background-color: #2980b9;
-    }
+    /* テーブル */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: bold; }
+    tr:hover { background: #f8f9fa; }
 
-    .search-btn:disabled {
-      background-color: #95a5a6;
-      cursor: not-allowed;
-    }
-
-    .result-area {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      display: none;
-    }
-
-    .result-area.show {
-      display: block;
-    }
-
-    .result-success {
-      border-left: 4px solid #27ae60;
-    }
-
-    .result-error {
-      border-left: 4px solid #e74c3c;
-    }
-
-    .result-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 15px;
-    }
-
-    .result-success .result-title {
-      color: #27ae60;
-    }
-
-    .result-error .result-title {
-      color: #e74c3c;
-    }
-
+    /* 結果表示 */
+    .result-area { display: none; }
+    .result-area.show { display: block; }
+    .result-success { border-left: 4px solid #27ae60; }
+    .result-error { border-left: 4px solid #e74c3c; }
+    .result-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+    .result-success .result-title { color: #27ae60; }
+    .result-error .result-title { color: #e74c3c; }
     .arrival-date {
-      font-size: 28px;
-      font-weight: bold;
-      color: #2c3e50;
-      margin-bottom: 20px;
-      padding: 15px;
-      background-color: #ecf0f1;
-      border-radius: 4px;
-      text-align: center;
+      font-size: 28px; font-weight: bold; color: #2c3e50; margin-bottom: 20px;
+      padding: 15px; background: #ecf0f1; border-radius: 4px; text-align: center;
     }
+    .days-required { font-size: 14px; color: #7f8c8d; margin-top: 5px; }
 
-    .days-required {
-      font-size: 14px;
-      color: #7f8c8d;
-      margin-top: 5px;
-    }
-
-    .route-section {
-      margin-top: 20px;
-    }
-
-    .route-section h3 {
-      font-size: 16px;
-      color: #555;
-      margin-bottom: 10px;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 8px;
-    }
-
-    .route-list {
-      list-style: none;
-    }
-
-    .route-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px dashed #eee;
-    }
-
-    .route-item:last-child {
-      border-bottom: none;
-    }
-
+    /* 経路表示 */
+    .route-list { list-style: none; }
+    .route-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px dashed #eee; }
+    .route-item:last-child { border-bottom: none; }
     .route-step {
-      width: 30px;
-      height: 30px;
-      background-color: #3498db;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      margin-right: 15px;
-      flex-shrink: 0;
+      width: 30px; height: 30px; background: #3498db; color: white; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px;
     }
+    .route-step.start { background: #27ae60; }
+    .route-step.end { background: #e74c3c; }
+    .route-info { flex-grow: 1; }
+    .route-location { font-weight: bold; color: #2c3e50; }
+    .route-date { font-size: 14px; color: #7f8c8d; }
+    .route-action { font-size: 12px; color: #3498db; background: #ebf5fb; padding: 2px 8px; border-radius: 3px; margin-left: 10px; }
 
-    .route-step.start {
-      background-color: #27ae60;
-    }
-
-    .route-step.end {
-      background-color: #e74c3c;
-    }
-
-    .route-info {
-      flex-grow: 1;
-    }
-
-    .route-location {
-      font-weight: bold;
-      color: #2c3e50;
-    }
-
-    .route-date {
-      font-size: 14px;
-      color: #7f8c8d;
-    }
-
-    .route-action {
-      font-size: 12px;
-      color: #3498db;
-      background-color: #ebf5fb;
-      padding: 2px 8px;
-      border-radius: 3px;
-      margin-left: 10px;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #7f8c8d;
-    }
-
+    .loading { text-align: center; padding: 20px; color: #7f8c8d; }
     .loading::after {
-      content: '';
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #ddd;
-      border-top-color: #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 10px;
-      vertical-align: middle;
+      content: ''; display: inline-block; width: 20px; height: 20px;
+      border: 2px solid #ddd; border-top-color: #3498db; border-radius: 50%;
+      animation: spin 1s linear infinite; margin-left: 10px; vertical-align: middle;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    .message { padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+    .message.success { background: #d4edda; color: #155724; }
+    .message.error { background: #f8d7da; color: #721c24; }
 
-    .error-message {
-      color: #e74c3c;
-      font-size: 16px;
-    }
+    /* モーダル */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal.show { display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h3 { margin: 0; }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+    .modal-footer { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
 
     @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-
-      h1 {
-        font-size: 20px;
-      }
-
-      .search-form,
-      .result-area {
-        padding: 15px;
-      }
-
-      .arrival-date {
-        font-size: 22px;
-      }
+      .form-row { flex-direction: column; gap: 0; }
+      .tabs { flex-wrap: wrap; }
+      .tab { flex: 1; text-align: center; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>店間便 到着日検索</h1>
+    <h1>店間便 到着日検索・管理</h1>
 
-    <div class="search-form">
-      <div class="form-group">
-        <label for="fromLocation">出発拠点</label>
-        <select id="fromLocation">
-          <option value="">読み込み中...</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="toLocation">到着拠点</label>
-        <select id="toLocation">
-          <option value="">読み込み中...</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="searchDate">検索基準日</label>
-        <input type="date" id="searchDate">
-      </div>
-
-      <button type="button" class="search-btn" id="searchBtn" onclick="performSearch()">
-        検索
-      </button>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('search')">経路検索</button>
+      <button class="tab" onclick="showTab('locations')">拠点管理</button>
+      <button class="tab" onclick="showTab('rules')">ルール管理</button>
     </div>
 
-    <div class="result-area" id="resultArea">
-      <!-- 検索結果がここに表示される -->
+    <!-- 経路検索タブ -->
+    <div id="tab-search" class="tab-content active">
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>出発拠点</label>
+            <select id="fromLocation"><option value="">読み込み中...</option></select>
+          </div>
+          <div class="form-group">
+            <label>到着拠点</label>
+            <select id="toLocation"><option value="">読み込み中...</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>検索基準日</label>
+          <input type="date" id="searchDate">
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="performSearch()">検索</button>
+      </div>
+      <div class="card result-area" id="resultArea"></div>
+    </div>
+
+    <!-- 拠点管理タブ -->
+    <div id="tab-locations" class="tab-content">
+      <div class="card">
+        <h2>拠点一覧</h2>
+        <button class="btn btn-success" onclick="showAddLocationModal()">+ 新規拠点追加</button>
+        <div id="messageLocations"></div>
+        <table id="locationTable">
+          <thead><tr><th>拠点名</th><th>種別</th><th>ID</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ルール管理タブ -->
+    <div id="tab-rules" class="tab-content">
+      <div class="card">
+        <h2>ルール検索</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>拠点</label>
+            <select id="ruleSearchLocation"><option value="">選択してください</option></select>
+          </div>
+          <div class="form-group">
+            <label>方向</label>
+            <select id="ruleSearchDirection">
+              <option value="from">この拠点から出発</option>
+              <option value="to">この拠点に到着</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="searchRules()">検索</button>
+        <button class="btn btn-success" onclick="showAddRuleModal()">+ 新規ルール追加</button>
+      </div>
+      <div class="card">
+        <h2>ルール一覧</h2>
+        <div id="messageRules"></div>
+        <table id="ruleTable">
+          <thead><tr><th>出発拠点</th><th>積込曜日</th><th>到着拠点</th><th>到着曜日</th><th>同日積替</th><th>種別</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 拠点追加/編集モーダル -->
+  <div class="modal" id="locationModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="locationModalTitle">拠点追加</h3>
+        <button class="modal-close" onclick="closeModal('locationModal')">&times;</button>
+      </div>
+      <input type="hidden" id="editLocationId">
+      <div class="form-group">
+        <label>拠点名</label>
+        <input type="text" id="locationName" placeholder="例: 東京DC">
+      </div>
+      <div class="form-group">
+        <label>種別</label>
+        <select id="locationType">
+          <option value="店舗">店舗</option>
+          <option value="配送センター">配送センター</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('locationModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveLocation()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ルール追加/編集モーダル -->
+  <div class="modal" id="ruleModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="ruleModalTitle">ルール追加</h3>
+        <button class="modal-close" onclick="closeModal('ruleModal')">&times;</button>
+      </div>
+      <input type="hidden" id="editRuleRowIndex">
+      <div class="form-row">
+        <div class="form-group">
+          <label>出発拠点</label>
+          <select id="ruleFromLocation"></select>
+        </div>
+        <div class="form-group">
+          <label>積込曜日</label>
+          <select id="ruleLoadWeekday"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>到着拠点</label>
+          <select id="ruleToLocation"></select>
+        </div>
+        <div class="form-group">
+          <label>到着曜日</label>
+          <select id="ruleArrivalWeekday"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>同日積替可否</label>
+          <select id="ruleSameDayTransfer">
+            <option value="">不可</option>
+            <option value="可">可</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>種別</label>
+          <select id="ruleTransferType">
+            <option value="">店間便</option>
+            <option value="店引">店引</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('ruleModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveRule()">保存</button>
+      </div>
     </div>
   </div>
 
   <script>
-    // 初期化
-    document.addEventListener('DOMContentLoaded', function() {
-      loadLocations();
-      setDefaultDate();
-    });
+    let locations = [];
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
-    // デフォルトの日付を設定（今日）
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      setDefaultDate();
+      loadLocations();
+    }
+
     function setDefaultDate() {
       const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      document.getElementById('searchDate').value = `${yyyy}-${mm}-${dd}`;
+      document.getElementById('searchDate').value = today.toISOString().split('T')[0];
     }
 
-    // 拠点一覧を読み込み
     function loadLocations() {
-      google.script.run
-        .withSuccessHandler(function(locations) {
-          populateLocationSelect('fromLocation', locations);
-          populateLocationSelect('toLocation', locations);
-        })
-        .withFailureHandler(function(error) {
-          console.error('拠点読み込みエラー:', error);
-          alert('拠点一覧の読み込みに失敗しました');
-        })
-        .getLocations();
+      google.script.run.withSuccessHandler(function(data) {
+        locations = data;
+        populateLocationSelects();
+        renderLocationTable();
+      }).getLocations();
     }
 
-    // セレクトボックスに拠点を設定
-    function populateLocationSelect(selectId, locations) {
-      const select = document.getElementById(selectId);
-      select.innerHTML = '<option value="">選択してください</option>';
+    function populateLocationSelects() {
+      const selects = ['fromLocation', 'toLocation', 'ruleSearchLocation', 'ruleFromLocation', 'ruleToLocation'];
+      selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">選択してください</option>';
+        locations.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc.id;
+          opt.textContent = loc.name;
+          select.appendChild(opt);
+        });
+        if (currentValue) select.value = currentValue;
+      });
 
-      locations.forEach(function(loc) {
-        const option = document.createElement('option');
-        option.value = loc.id;
-        option.textContent = loc.displayName;
-        select.appendChild(option);
+      // 曜日セレクト
+      ['ruleLoadWeekday', 'ruleArrivalWeekday'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select || select.options.length > 1) return;
+        select.innerHTML = '';
+        weekdays.forEach(day => {
+          const opt = document.createElement('option');
+          opt.value = day;
+          opt.textContent = day;
+          select.appendChild(opt);
+        });
       });
     }
 
-    // 検索実行
-    function performSearch() {
-      const fromLocation = document.getElementById('fromLocation').value;
-      const toLocation = document.getElementById('toLocation').value;
-      const searchDate = document.getElementById('searchDate').value;
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
 
-      // バリデーション
-      if (!fromLocation) {
-        alert('出発拠点を選択してください');
-        return;
-      }
-      if (!toLocation) {
-        alert('到着拠点を選択してください');
-        return;
-      }
-      if (!searchDate) {
-        alert('検索基準日を入力してください');
-        return;
-      }
-
-      // 検索中表示
-      const resultArea = document.getElementById('resultArea');
-      resultArea.className = 'result-area show';
-      resultArea.innerHTML = '<div class="loading">検索中</div>';
-
-      const searchBtn = document.getElementById('searchBtn');
-      searchBtn.disabled = true;
-
-      // 検索実行
-      google.script.run
-        .withSuccessHandler(function(result) {
-          displayResult(result);
-          searchBtn.disabled = false;
-        })
-        .withFailureHandler(function(error) {
-          displayError('検索中にエラーが発生しました: ' + error);
-          searchBtn.disabled = false;
-        })
-        .executeSearch(fromLocation, toLocation, searchDate);
+      if (name === 'locations') renderLocationTable();
+      if (name === 'rules') searchRules();
     }
 
-    // 検索結果を表示
+    // === 経路検索 ===
+    function performSearch() {
+      const from = document.getElementById('fromLocation').value;
+      const to = document.getElementById('toLocation').value;
+      const date = document.getElementById('searchDate').value;
+
+      if (!from || !to || !date) { alert('すべて入力してください'); return; }
+
+      const resultArea = document.getElementById('resultArea');
+      resultArea.className = 'card result-area show';
+      resultArea.innerHTML = '<div class="loading">検索中</div>';
+
+      google.script.run.withSuccessHandler(displayResult).withFailureHandler(e => displayError(e.message))
+        .executeSearch(from, to, date);
+    }
+
     function displayResult(result) {
       const resultArea = document.getElementById('resultArea');
-
       if (result.success) {
-        let html = '<div class="result-success">';
-        html += '<div class="result-title">経路が見つかりました</div>';
-        html += '<div class="arrival-date">';
-        html += formatDateJapanese(result.arrivalDate);
-        if (result.daysRequired !== undefined) {
-          html += '<div class="days-required">' + result.daysRequired + '日後</div>';
-        }
+        let html = '<div class="result-success"><div class="result-title">経路が見つかりました</div>';
+        html += '<div class="arrival-date">' + formatDateJapanese(result.arrivalDate);
+        if (result.daysRequired !== undefined) html += '<div class="days-required">' + result.daysRequired + '日後</div>';
         html += '</div>';
-
-        // 経路表示
-        if (result.route && result.route.length > 0) {
-          html += '<div class="route-section">';
-          html += '<h3>経由拠点・日付</h3>';
-          html += '<ul class="route-list">';
-
-          result.route.forEach(function(step, index) {
-            const stepClass = index === 0 ? 'start' : (index === result.route.length - 1 ? 'end' : '');
-            html += '<li class="route-item">';
-            html += '<div class="route-step ' + stepClass + '">' + (index + 1) + '</div>';
-            html += '<div class="route-info">';
-            html += '<span class="route-location">' + escapeHtml(step.locationName) + '</span>';
+        if (result.route) {
+          html += '<h3 style="margin:15px 0 10px">経由拠点・日付</h3><ul class="route-list">';
+          result.route.forEach((step, i) => {
+            const stepClass = i === 0 ? 'start' : (i === result.route.length - 1 ? 'end' : '');
+            html += '<li class="route-item"><div class="route-step ' + stepClass + '">' + (i + 1) + '</div>';
+            html += '<div class="route-info"><span class="route-location">' + escapeHtml(step.locationName) + '</span>';
             html += '<span class="route-action">' + escapeHtml(step.action) + '</span>';
-            html += '<div class="route-date">' + formatDateJapanese(step.date) + '</div>';
-            html += '</div>';
-            html += '</li>';
+            if (step.transferType) html += '<span class="route-action">' + escapeHtml(step.transferType) + '</span>';
+            html += '<div class="route-date">' + formatDateJapanese(step.date) + '</div></div></li>';
           });
-
           html += '</ul>';
-          html += '</div>';
         }
-
         html += '</div>';
         resultArea.innerHTML = html;
-        resultArea.className = 'result-area show result-success';
       } else {
         displayError(result.error);
       }
     }
 
-    // エラー表示
-    function displayError(message) {
+    function displayError(msg) {
       const resultArea = document.getElementById('resultArea');
-      let html = '<div class="result-error">';
-      html += '<div class="result-title">到達不可</div>';
-      html += '<p class="error-message">' + escapeHtml(message) + '</p>';
-      html += '</div>';
-      resultArea.innerHTML = html;
-      resultArea.className = 'result-area show result-error';
+      resultArea.innerHTML = '<div class="result-error"><div class="result-title">到達不可</div><p>' + escapeHtml(msg) + '</p></div>';
+      resultArea.className = 'card result-area show';
     }
 
-    // 日付を日本語形式に変換
+    // === 拠点管理 ===
+    function renderLocationTable() {
+      const tbody = document.querySelector('#locationTable tbody');
+      tbody.innerHTML = locations.map(loc => `
+        <tr>
+          <td>${escapeHtml(loc.name)}</td>
+          <td>${escapeHtml(loc.type)}</td>
+          <td>${escapeHtml(loc.id)}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="showEditLocationModal('${loc.id}')">編集</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDeleteLocation('${loc.id}', '${escapeHtml(loc.name)}')">削除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function showAddLocationModal() {
+      document.getElementById('locationModalTitle').textContent = '拠点追加';
+      document.getElementById('editLocationId').value = '';
+      document.getElementById('locationName').value = '';
+      document.getElementById('locationType').value = '店舗';
+      document.getElementById('locationModal').classList.add('show');
+    }
+
+    function showEditLocationModal(id) {
+      const loc = locations.find(l => l.id === id);
+      if (!loc) return;
+      document.getElementById('locationModalTitle').textContent = '拠点編集';
+      document.getElementById('editLocationId').value = id;
+      document.getElementById('locationName').value = loc.name;
+      document.getElementById('locationType').value = loc.type;
+      document.getElementById('locationModal').classList.add('show');
+    }
+
+    function saveLocation() {
+      const id = document.getElementById('editLocationId').value;
+      const name = document.getElementById('locationName').value.trim();
+      const type = document.getElementById('locationType').value;
+
+      if (!name) { alert('拠点名を入力してください'); return; }
+
+      const callback = function(result) {
+        if (result.success) {
+          showMessage('messageLocations', result.message, 'success');
+          closeModal('locationModal');
+          loadLocations();
+        } else {
+          showMessage('messageLocations', result.error, 'error');
+        }
+      };
+
+      if (id) {
+        google.script.run.withSuccessHandler(callback).apiUpdateLocation(id, name, type);
+      } else {
+        google.script.run.withSuccessHandler(callback).apiAddLocation(name, type);
+      }
+    }
+
+    function confirmDeleteLocation(id, name) {
+      if (!confirm(`「${name}」を削除しますか？\n関連するルールも確認してください。`)) return;
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showMessage('messageLocations', result.message, 'success');
+          loadLocations();
+        } else {
+          showMessage('messageLocations', result.error, 'error');
+        }
+      }).apiDeleteLocation(id);
+    }
+
+    // === ルール管理 ===
+    function searchRules() {
+      const locationId = document.getElementById('ruleSearchLocation').value;
+      const direction = document.getElementById('ruleSearchDirection').value;
+
+      const callback = function(result) {
+        if (result.success) {
+          renderRuleTable(result.rules);
+        } else {
+          showMessage('messageRules', result.error, 'error');
+        }
+      };
+
+      if (locationId) {
+        google.script.run.withSuccessHandler(callback).apiGetRulesForLocation(locationId, direction);
+      } else {
+        google.script.run.withSuccessHandler(callback).apiGetAllRules();
+      }
+    }
+
+    function renderRuleTable(rules) {
+      const tbody = document.querySelector('#ruleTable tbody');
+      tbody.innerHTML = rules.map(rule => `
+        <tr>
+          <td>${escapeHtml(rule.fromLocationName)}</td>
+          <td>${escapeHtml(rule.loadWeekdayName)}</td>
+          <td>${escapeHtml(rule.toLocationName)}</td>
+          <td>${escapeHtml(rule.arrivalWeekdayName)}</td>
+          <td>${rule.sameDayTransfer ? '可' : ''}</td>
+          <td>${escapeHtml(rule.transferType || '')}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick='showEditRuleModal(${JSON.stringify(rule)})'>編集</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDeleteRule(${rule.rowIndex})">削除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function showAddRuleModal() {
+      document.getElementById('ruleModalTitle').textContent = 'ルール追加';
+      document.getElementById('editRuleRowIndex').value = '';
+      document.getElementById('ruleFromLocation').value = '';
+      document.getElementById('ruleToLocation').value = '';
+      document.getElementById('ruleLoadWeekday').value = '月';
+      document.getElementById('ruleArrivalWeekday').value = '月';
+      document.getElementById('ruleSameDayTransfer').value = '';
+      document.getElementById('ruleTransferType').value = '';
+      document.getElementById('ruleModal').classList.add('show');
+    }
+
+    function showEditRuleModal(rule) {
+      document.getElementById('ruleModalTitle').textContent = 'ルール編集';
+      document.getElementById('editRuleRowIndex').value = rule.rowIndex;
+      document.getElementById('ruleFromLocation').value = rule.fromLocation;
+      document.getElementById('ruleToLocation').value = rule.toLocation;
+      document.getElementById('ruleLoadWeekday').value = rule.loadWeekdayName;
+      document.getElementById('ruleArrivalWeekday').value = rule.arrivalWeekdayName;
+      document.getElementById('ruleSameDayTransfer').value = rule.sameDayTransfer ? '可' : '';
+      document.getElementById('ruleTransferType').value = rule.transferType || '';
+      document.getElementById('ruleModal').classList.add('show');
+    }
+
+    function saveRule() {
+      const rowIndex = document.getElementById('editRuleRowIndex').value;
+      const fromLocation = document.getElementById('ruleFromLocation').value;
+      const toLocation = document.getElementById('ruleToLocation').value;
+      const loadWeekday = document.getElementById('ruleLoadWeekday').value;
+      const arrivalWeekday = document.getElementById('ruleArrivalWeekday').value;
+      const sameDayTransfer = document.getElementById('ruleSameDayTransfer').value === '可';
+      const transferType = document.getElementById('ruleTransferType').value;
+
+      if (!fromLocation || !toLocation) { alert('拠点を選択してください'); return; }
+
+      const callback = function(result) {
+        if (result.success) {
+          showMessage('messageRules', result.message, 'success');
+          closeModal('ruleModal');
+          searchRules();
+        } else {
+          showMessage('messageRules', result.error, 'error');
+        }
+      };
+
+      if (rowIndex) {
+        google.script.run.withSuccessHandler(callback)
+          .apiUpdateRule(parseInt(rowIndex), fromLocation, loadWeekday, toLocation, arrivalWeekday, sameDayTransfer, transferType);
+      } else {
+        google.script.run.withSuccessHandler(callback)
+          .apiAddRule(fromLocation, loadWeekday, toLocation, arrivalWeekday, sameDayTransfer, transferType);
+      }
+    }
+
+    function confirmDeleteRule(rowIndex) {
+      if (!confirm('このルールを削除しますか？')) return;
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showMessage('messageRules', result.message, 'success');
+          searchRules();
+        } else {
+          showMessage('messageRules', result.error, 'error');
+        }
+      }).apiDeleteRule(rowIndex);
+    }
+
+    // === ユーティリティ ===
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    function showMessage(elementId, msg, type) {
+      const el = document.getElementById(elementId);
+      el.innerHTML = '<div class="message ' + type + '">' + escapeHtml(msg) + '</div>';
+      setTimeout(() => { el.innerHTML = ''; }, 5000);
+    }
+
     function formatDateJapanese(dateStr) {
       if (!dateStr) return '';
       const parts = dateStr.split('-');
-      const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-      const weekday = weekdays[date.getDay()];
-      return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日（' + weekday + '）';
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日（' + weekdays[d.getDay()] + '）';
     }
 
-    // HTMLエスケープ
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
   </script>
 </body>

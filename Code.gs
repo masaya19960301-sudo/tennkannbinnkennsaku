@@ -171,6 +171,105 @@ function createSampleData() {
   return 'サンプルデータを作成しました';
 }
 
+// ==================== 管理機能API ====================
+
+/**
+ * 拠点を追加（UI呼び出し用）
+ */
+function apiAddLocation(name, type) {
+  return addLocation({ name: name, type: type });
+}
+
+/**
+ * 拠点を更新（UI呼び出し用）
+ */
+function apiUpdateLocation(id, name, type) {
+  return updateLocation({ id: id, name: name, type: type });
+}
+
+/**
+ * 拠点を削除（UI呼び出し用）
+ */
+function apiDeleteLocation(locationId) {
+  return deleteLocation(locationId);
+}
+
+/**
+ * 指定拠点のルール一覧を取得（UI呼び出し用）
+ * @param {string} locationId - 拠点ID
+ * @param {string} direction - 'from'（出発）または 'to'（到着）
+ */
+function apiGetRulesForLocation(locationId, direction) {
+  try {
+    return {
+      success: true,
+      rules: getRulesForLocation(locationId, direction)
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * 全ルール一覧を取得（UI呼び出し用）
+ */
+function apiGetAllRules() {
+  try {
+    return {
+      success: true,
+      rules: getAllRulesWithNames()
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * ルールを追加（UI呼び出し用）
+ */
+function apiAddRule(fromLocation, loadWeekday, toLocation, arrivalWeekday, sameDayTransfer, transferType) {
+  return addRule({
+    fromLocation: fromLocation,
+    loadWeekday: loadWeekday,
+    toLocation: toLocation,
+    arrivalWeekday: arrivalWeekday,
+    sameDayTransfer: sameDayTransfer,
+    transferType: transferType
+  });
+}
+
+/**
+ * ルールを更新（UI呼び出し用）
+ */
+function apiUpdateRule(rowIndex, fromLocation, loadWeekday, toLocation, arrivalWeekday, sameDayTransfer, transferType) {
+  return updateRule({
+    rowIndex: rowIndex,
+    fromLocation: fromLocation,
+    loadWeekday: loadWeekday,
+    toLocation: toLocation,
+    arrivalWeekday: arrivalWeekday,
+    sameDayTransfer: sameDayTransfer,
+    transferType: transferType
+  });
+}
+
+/**
+ * ルールを削除（UI呼び出し用）
+ */
+function apiDeleteRule(rowIndex) {
+  return deleteRule(rowIndex);
+}
+
+/**
+ * 曜日一覧を取得（UI呼び出し用）
+ */
+function apiGetWeekdays() {
+  return CONFIG.WEEKDAY_NAMES.map((name, index) => ({
+    value: name,
+    index: index
+  }));
+}
+
 /**
  * テスト用：経路検索のテスト実行
  */
