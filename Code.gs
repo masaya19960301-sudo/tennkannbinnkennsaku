@@ -112,13 +112,13 @@ function createSampleData() {
   let sheet = ss.getSheetByName(CONFIG.SHEETS.LOCATIONS);
   if (!sheet) {
     sheet = ss.insertSheet(CONFIG.SHEETS.LOCATIONS);
-    sheet.getRange(1, 1, 1, 3).setValues([['拠点ID', '拠点名', '種別']]);
-    sheet.getRange(2, 1, 5, 3).setValues([
-      ['DC001', '東京DC', '配送センター'],
-      ['DC002', '大阪DC', '配送センター'],
-      ['DC003', '名古屋DC', '配送センター'],
-      ['ST001', '新宿店', '店舗'],
-      ['ST002', '梅田店', '店舗']
+    sheet.getRange(1, 1, 1, 4).setValues([['拠点ID', '拠点名', '種別', '併設先']]);
+    sheet.getRange(2, 1, 5, 4).setValues([
+      ['DC001', '東京DC', '配送センター', ''],
+      ['DC002', '大阪DC', '配送センター', ''],
+      ['DC003', '名古屋DC', '配送センター', ''],
+      ['ST001', '新宿店', '店舗', ''],
+      ['ST002', '梅田店', '店舗', '']
     ]);
   }
 
@@ -175,16 +175,23 @@ function createSampleData() {
 
 /**
  * 拠点を追加（UI呼び出し用）
+ * @param {string} name - 拠点名
+ * @param {string} type - 種別
+ * @param {string} colocated - 併設先拠点ID（省略可）
  */
-function apiAddLocation(name, type) {
-  return addLocation({ name: name, type: type });
+function apiAddLocation(name, type, colocated) {
+  return addLocation({ name: name, type: type, colocated: colocated || '' });
 }
 
 /**
  * 拠点を更新（UI呼び出し用）
+ * @param {string} id - 拠点ID
+ * @param {string} name - 拠点名
+ * @param {string} type - 種別
+ * @param {string} colocated - 併設先拠点ID（省略可）
  */
-function apiUpdateLocation(id, name, type) {
-  return updateLocation({ id: id, name: name, type: type });
+function apiUpdateLocation(id, name, type, colocated) {
+  return updateLocation({ id: id, name: name, type: type, colocated: colocated || '' });
 }
 
 /**

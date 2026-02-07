@@ -23,7 +23,8 @@ const CONFIG = {
   LOCATION_COLS: {
     ID: 0,        // 拠点ID
     NAME: 1,      // 拠点名
-    TYPE: 2       // 種別
+    TYPE: 2,      // 種別
+    COLOCATED: 3  // 併設先拠点ID（空欄可）
   },
 
   // 積み込み・移動ルールのカラム

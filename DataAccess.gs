@@ -57,10 +57,14 @@ function loadLocations() {
     const id = String(row[CONFIG.LOCATION_COLS.ID]).trim();
     if (!id) continue;
 
+    // 併設先拠点ID（空欄の場合は空文字）
+    const colocated = String(row[CONFIG.LOCATION_COLS.COLOCATED] || '').trim();
+
     locations.set(id, {
       id: id,
       name: String(row[CONFIG.LOCATION_COLS.NAME]).trim(),
-      type: String(row[CONFIG.LOCATION_COLS.TYPE]).trim()
+      type: String(row[CONFIG.LOCATION_COLS.TYPE]).trim(),
+      colocated: colocated  // 併設先拠点ID
     });
   }
 
@@ -215,10 +219,18 @@ function getLocationList() {
   const list = [];
 
   for (const [id, loc] of locations) {
+    // 併設先の拠点名を取得
+    let colocatedName = '';
+    if (loc.colocated && locations.has(loc.colocated)) {
+      colocatedName = locations.get(loc.colocated).name;
+    }
+
     list.push({
       id: loc.id,
       name: loc.name,
       type: loc.type,
+      colocated: loc.colocated || '',  // 併設先拠点ID
+      colocatedName: colocatedName,     // 併設先拠点名
       displayName: `${loc.name}（${loc.id}）`
     });
   }
@@ -275,12 +287,13 @@ function addLocation(location) {
     // 拠点ID自動生成
     const newId = generateLocationId(location.type);
 
-    // 最終行に追加
+    // 最終行に追加（併設先も含む4列）
     const lastRow = sheet.getLastRow();
-    sheet.getRange(lastRow + 1, 1, 1, 3).setValues([[
+    sheet.getRange(lastRow + 1, 1, 1, 4).setValues([[
       newId,
       location.name,
-      location.type
+      location.type,
+      location.colocated || ''  // 併設先拠点ID
     ]]);
 
     return { success: true, id: newId, message: `拠点「${location.name}」を追加しました` };
@@ -302,7 +315,12 @@ function updateLocation(location) {
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === location.id) {
-        sheet.getRange(i + 1, 2, 1, 2).setValues([[location.name, location.type]]);
+        // 拠点名、種別、併設先の3列を更新
+        sheet.getRange(i + 1, 2, 1, 3).setValues([[
+          location.name,
+          location.type,
+          location.colocated || ''  // 併設先拠点ID
+        ]]);
         return { success: true, message: `拠点「${location.name}」を更新しました` };
       }
     }

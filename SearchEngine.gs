@@ -64,6 +64,33 @@ class RouteSearchEngine {
         error: `到着拠点「${toLocationId}」が見つかりません`
       };
     }
+
+    // 併設チェック: 出発拠点と到着拠点が併設関係にある場合
+    const fromLoc = this.locations.get(fromLocationId);
+    const toLoc = this.locations.get(toLocationId);
+    if (fromLoc.colocated === toLocationId || toLoc.colocated === fromLocationId) {
+      return {
+        success: true,
+        arrivalDate: formatDate(searchDate),
+        route: [
+          {
+            location: fromLocationId,
+            locationName: fromLoc.name,
+            date: formatDate(searchDate),
+            action: '出発'
+          },
+          {
+            location: toLocationId,
+            locationName: toLoc.name,
+            date: formatDate(searchDate),
+            action: '到着（併設渡し）'
+          }
+        ],
+        daysRequired: 0,
+        message: '併設拠点のため即時受け渡し可能です'
+      };
+    }
+
     if (fromLocationId === toLocationId) {
       return {
         success: true,
@@ -78,7 +105,14 @@ class RouteSearchEngine {
       };
     }
 
-    const baseDate = parseDate(searchDate);
+    let baseDate = parseDate(searchDate);
+
+    // 当日検索の場合は翌日以降から検索（今日出しても間に合わないため）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (baseDate.getTime() === today.getTime()) {
+      baseDate = addDays(baseDate, 1);
+    }
     const maxDate = addDays(baseDate, CONFIG.MAX_SEARCH_DAYS);
 
     // 最良の結果を保持（到着日が早い、同着なら経由数が少ない）
@@ -185,16 +219,32 @@ class RouteSearchEngine {
         // 店引カウントを更新
         const newStorePickupCount = (current.storePickupCount || 0) + (rule.isStorePickup ? 1 : 0);
 
-        // 目的地に到着した場合
-        if (rule.toLocation === toLocationId) {
+        // 目的地に到着した場合、または目的地の併設拠点に到着した場合
+        const destLoc = this.locations.get(toLocationId);
+        const arrivalLoc = this.locations.get(rule.toLocation);
+        const isDestination = rule.toLocation === toLocationId;
+        const isColocatedWithDest = (arrivalLoc.colocated === toLocationId) ||
+                                     (destLoc.colocated === rule.toLocation);
+
+        if (isDestination || isColocatedWithDest) {
           const finalPath = [...current.path, {
             location: rule.toLocation,
             locationName: this.locations.get(rule.toLocation).name,
             date: formatDate(arrivalDate),
-            action: '到着',
+            action: isColocatedWithDest ? '到着' : '到着',
             transferType: rule.transferType,
             isStorePickup: rule.isStorePickup
           }];
+
+          // 併設拠点経由の場合は最終目的地への併設渡しを追加
+          if (isColocatedWithDest && !isDestination) {
+            finalPath.push({
+              location: toLocationId,
+              locationName: destLoc.name,
+              date: formatDate(arrivalDate),
+              action: '到着（併設渡し）'
+            });
+          }
 
           const newResult = {
             success: true,
@@ -259,6 +309,55 @@ class RouteSearchEngine {
               storePickupCount: newStorePickupCount  // 店引の使用回数を保持
             });
             addedDates.add(dateStr);
+          }
+        }
+
+        // 併設拠点がある場合、併設先からも探索を続行
+        const transitLoc = this.locations.get(rule.toLocation);
+        if (transitLoc.colocated && this.locations.has(transitLoc.colocated)) {
+          const colocatedId = transitLoc.colocated;
+          const colocatedLoc = this.locations.get(colocatedId);
+
+          // 併設渡しのパスを作成
+          const colocatedPath = [...newPath, {
+            location: colocatedId,
+            locationName: colocatedLoc.name,
+            date: formatDate(arrivalDate),
+            action: '併設渡し'
+          }];
+
+          // 併設先から出発可能なルールも探索
+          const colocatedOutboundRules = this.rulesByOrigin.get(colocatedId) || [];
+          const colocatedAddedDates = new Set();
+
+          for (const outRule of colocatedOutboundRules) {
+            // 併設渡しは即時なので、同じ日から探索可能
+            const nextDepartureDate = this.getNextWeekdayDate(arrivalDate, outRule.loadWeekday);
+
+            if (nextDepartureDate > maxDate) continue;
+
+            const dateStr = formatDate(nextDepartureDate);
+            if (colocatedAddedDates.has(dateStr)) continue;
+
+            if (this.isClosedByCalendar(colocatedId, nextDepartureDate)) {
+              continue;
+            }
+
+            const nextKey = `${colocatedId}_${dateStr}`;
+            const nextExistingHops = visited.get(nextKey);
+
+            // 併設渡しは経由数にカウントしない（同じ場所なので）
+            if (nextExistingHops === undefined || newHops < nextExistingHops) {
+              visited.set(nextKey, newHops);
+              queue.push({
+                location: colocatedId,
+                date: nextDepartureDate,
+                path: colocatedPath,
+                hops: newHops,  // 併設渡しはhopsを増やさない
+                storePickupCount: newStorePickupCount
+              });
+              colocatedAddedDates.add(dateStr);
+            }
           }
         }
       }
